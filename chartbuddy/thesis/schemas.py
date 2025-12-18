@@ -61,6 +61,15 @@ class Direction(str, Enum):
     UNKNOWN = "unknown"
 
 
+class VectorCandlePattern(str, Enum):
+    """Descriptive multi-candle pattern classification (not a signal)."""
+
+    IMPULSE = "impulse"
+    EXHAUSTION = "exhaustion"
+    COMPRESSION = "compression"
+    UNCLEAR = "unclear"
+
+
 class BaseSnapshotModel(BaseModel):
     """Base model with consistent serialization defaults."""
 
@@ -214,6 +223,12 @@ class VectorCandleState(BaseSnapshotModel):
     source: Optional[str] = Field(
         default=None, description="Data source label (e.g. 'binance_spot')."
     )
+
+    pattern: Optional[VectorCandlePattern] = Field(
+        default=None,
+        description="Descriptive pattern classification from recent candles (not a signal).",
+    )
+    notes: Optional[str] = Field(default=None, description="Free-form snapshot notes.")
 
 
 class ShortThesis(BaseSnapshotModel):
