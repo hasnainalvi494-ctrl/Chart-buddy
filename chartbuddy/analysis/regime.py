@@ -199,6 +199,10 @@ def detect_market_regime(
     return "unclear"
 
 
+# Backwards/ergonomic alias for simpler call sites.
+detect_regime = detect_market_regime
+
+
 def _make_sample_ohlcv(
     *,
     kind: Regime,
@@ -274,4 +278,13 @@ def demo_print_sample_regimes() -> None:
 
 
 if __name__ == "__main__":
-    demo_print_sample_regimes()
+    import pandas as pd
+
+    # Example: load 50 historical candles
+    try:
+        df = pd.read_csv("sample_ohlcv.csv")
+        regime = detect_regime(df)
+        print("Detected regime:", regime)
+    except FileNotFoundError:
+        # Fallback demo when no CSV is present.
+        demo_print_sample_regimes()
