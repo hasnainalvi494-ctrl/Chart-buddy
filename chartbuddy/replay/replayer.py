@@ -96,8 +96,13 @@ def replay_thesis_persistence(
 
         as_of_ts = df["timestamp"].iloc[idx]
 
+        # Truncate to the candles that existed at that time.
+        # This allows strict lookahead mode to remain enabled while ensuring
+        # each analysis run only sees past/current data.
+        df_at = df.iloc[: idx + 1].copy()
+
         snap = build_symbol_snapshot(
-            df,
+            df_at,
             symbol=symbol,
             timeframe=timeframe,
             as_of=as_of_ts,
