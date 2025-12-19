@@ -93,9 +93,18 @@ def build_symbol_snapshot(
 
     as_of_ts = pd.to_datetime(as_of, utc=True) if as_of is not None else ts.iloc[-1]
 
+    # Truncate to data that existed at `as_of_ts` to keep strict lookahead enabled
+    # while ensuring each analyzer only sees past/current candles.
+    mask = ts <= as_of_ts
+    if not mask.any():
+        raise ValueError("No candles at or before as_of")
+
+    candles_at = candles.loc[mask].copy()
+    candles_at["timestamp"] = ts.loc[mask]
+
     # Use the same candles input for all modules; each module applies its own
     # lookahead guard (including as_of cutoff behavior).
-    regime_label = detect_market_regime(candles, as_of=as_of_ts, strict_lookahead=strict_lookahead)
+    regime_label = detect_market_regime(candles_at, as_of=as_of_ts, strict_lookahead=strict_lookahead)
 
     market_regime = MarketRegime(
         as_of=as_of_ts.to_pydatetime(),
@@ -105,7 +114,7 @@ def build_symbol_snapshot(
     )
 
     structure = detect_structure_state(
-        candles,
+        candles_at,
         symbol=symbol,
         timeframe=timeframe,
         as_of=as_of_ts,
@@ -113,7 +122,7 @@ def build_symbol_snapshot(
     )
 
     liquidity = detect_liquidity_state(
-        candles,
+        candles_at,
         symbol=symbol,
         timeframe=timeframe,
         as_of=as_of_ts,
@@ -121,7 +130,7 @@ def build_symbol_snapshot(
     )
 
     volume = analyze_volume_state(
-        candles,
+        candles_at,
         symbol=symbol,
         timeframe=timeframe,
         as_of=as_of_ts,
@@ -129,7 +138,7 @@ def build_symbol_snapshot(
     )
 
     vector_candle = analyze_vector_candle_state(
-        candles,
+        candles_at,
         symbol=symbol,
         timeframe=timeframe,
         as_of=as_of_ts,

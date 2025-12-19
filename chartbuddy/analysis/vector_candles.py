@@ -81,21 +81,19 @@ def _to_frame(
         raise ValueError("One or more OHLC values could not be parsed as numbers")
 
     # Optional venue columns.
+    for col in ("candle_open_time", "candle_close_time"):
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col], utc=True, errors="coerce")
+
     for col in (
         "quote_volume",
         "trades",
         "trade_count",
         "taker_buy_base_volume",
         "taker_buy_quote_volume",
-        "candle_open_time",
-        "candle_close_time",
-        "source",
     ):
         if col in df.columns:
-            if col in ("candle_open_time", "candle_close_time"):
-                df[col] = pd.to_datetime(df[col], utc=True, errors="coerce")
-            else:
-                df[col] = pd.to_numeric(df[col], errors="ignore")
+            df[col] = pd.to_numeric(df[col], errors="coerce")
 
     return df
 
@@ -223,6 +221,23 @@ def analyze_vector_candle_state(
     # Last candle snapshot (from full df to preserve optional fields if present)
     last = df.iloc[-1]
 
+    def _maybe_int(val) -> Optional[int]:
+        if val is None or (isinstance(val, float) and np.isnan(val)):
+            return None
+        try:
+            return int(val)
+        except Exception:
+            try:
+                return int(float(val))
+            except Exception:
+                return None
+
+    trades_val: Optional[int] = None
+    if "trades" in last.index and pd.notna(last["trades"]):
+        trades_val = _maybe_int(last["trades"])
+    elif "trade_count" in last.index and pd.notna(last["trade_count"]):
+        trades_val = _maybe_int(last["trade_count"])
+
     notes = (
         f"pattern={pattern.value}; lookback={int(len(win))}; "
         f"base_range={base_range:.6g}; base_body={base_body:.6g}; base_vol={base_vol:.6g}; "
@@ -240,7 +255,7 @@ def analyze_vector_candle_state(
         close=float(last["close"]),
         volume=float(last["volume"]) if "volume" in last.index and pd.notna(last["volume"]) else None,
         quote_volume=float(last["quote_volume"]) if "quote_volume" in last.index and pd.notna(last["quote_volume"]) else None,
-        trades=int(last["trades"]) if "trades" in last.index and pd.notna(last["trades"]) else None,
+        trades=trades_val,
         taker_buy_base_volume=float(last["taker_buy_base_volume"]) if "taker_buy_base_volume" in last.index and pd.notna(last["taker_buy_base_volume"]) else None,
         taker_buy_quote_volume=float(last["taker_buy_quote_volume"]) if "taker_buy_quote_volume" in last.index and pd.notna(last["taker_buy_quote_volume"]) else None,
         candle_open_time=last["candle_open_time"].to_pydatetime() if "candle_open_time" in last.index and pd.notna(last["candle_open_time"]) else None,
